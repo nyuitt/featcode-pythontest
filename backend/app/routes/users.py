@@ -17,10 +17,11 @@ Por que response_model=UserResponse?
 - Documenta o contrato da API no Swagger automaticamente
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.crud import user as crud_user
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 
@@ -30,7 +31,8 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def create_user(request: Request, user_in: UserCreate, db: Session = Depends(get_db)):
     """
     Cria um novo usuário.
 
@@ -49,7 +51,8 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=list[UserResponse])
-def list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@limiter.limit("100/minute")
+def list_users(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
     Lista usuarios com paginação simples.
     skip e limit viram query params automaticamente: GET /users?skip=0&limit=10
@@ -58,7 +61,8 @@ def list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: str, db: Session = Depends(get_db)):
+@limiter.limit("100/minute")
+def get_user(request: Request, user_id: str, db: Session = Depends(get_db)):
     """
     Busca um usuário pelo ID.
     Retorna 404 se não encontrado — nunca retornamos None na API, sempre HTTP semântico.
@@ -73,7 +77,8 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
-def update_user(user_id: str, user_in: UserUpdate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def update_user(request: Request, user_id: str, user_in: UserUpdate, db: Session = Depends(get_db)):
     """
     Atualização parcial (PATCH).
     Primeiro busca, depois verifica existência, depois delega para o CRUD.
@@ -89,7 +94,8 @@ def update_user(user_id: str, user_in: UserUpdate, db: Session = Depends(get_db)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: str, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def delete_user(request: Request, user_id: str, db: Session = Depends(get_db)):
     """
     Deleta um usuário.
     204 No Content é o código HTTP correto para DELETE bem-sucedido.
