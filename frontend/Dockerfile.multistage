@@ -1,0 +1,101 @@
+# =============================================================================
+# DOCKERFILE DE PRODUÇÃO — Multi-stage build
+# =============================================================================
+#
+# Este arquivo NÃO é utilizado no ambiente de desenvolvimento atual.
+# O Dockerfile padrão (./Dockerfile) sobe o Vite em modo dev, o que é
+# suficiente para rodar localmente e para o desafio técnico.
+#
+# Para um deploy real em VPS ou qualquer ambiente de produção, substituia o
+# ./Dockerfile por este arquivo. Vantagens:
+#   - Imagem final ~25MB (alpine + nginx) vs ~600MB (node + dev deps)
+#   - Sem sourcemaps expostos
+#   - Sem hot-reload server rodando desnecessariamente
+#   - Nginx serve arquivos estáticos diretamente (muito mais rápido)
+#   - O próprio nginx do frontend passa a servir a API em /api/
+#     eliminando a necessidade de um container nginx separado para proxy
+#
+# Para usar:
+#   1. Renomeie este arquivo para Dockerfile (sobrescreva o atual)
+#   2. Ajuste o docker-compose.yml: remova volumes de hot-reload do frontend
+#      e remova o serviço nginx (este container já faz o proxy)
+#   3. Execute: docker compose up -d --build frontend
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Stage 1: BUILD
+# Instala dependências e executa o build do Vite gerando /app/dist
+# -----------------------------------------------------------------------------
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copia manifests primeiro para aproveitar cache de layer do Docker.
+# Se package.json não mudou, Docker reutiliza o layer de npm ci.
+COPY package*.json ./
+RUN npm ci
+
+# Copia o restante do código (incluindo .env se existir)
+COPY . .
+
+# VITE_API_URL=/api garante que as chamadas de API sejam relativas,
+# funcionando independente do IP/domínio da VPS.
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
+
+# Gera os arquivos estáticos otimizados em /app/dist
+RUN npm run build
+
+# -----------------------------------------------------------------------------
+# Stage 2: SERVE
+# Imagem final mínima: nginx:alpine copiando apenas o dist/ do stage anterior.
+# Nenhuma dependência Node.js é incluída na imagem final.
+# -----------------------------------------------------------------------------
+FROM nginx:alpine AS production
+
+# Remove a config padrão do nginx
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Config nginx de produção: serve statics + proxy /api/ → backend:8000
+COPY --from=builder /app/nginx.prod.conf /etc/nginx/conf.d/default.conf
+
+# Copia apenas os arquivos buildados do stage anterior
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+
+# =============================================================================
+# nginx.prod.conf (criar junto com este Dockerfile em frontend/nginx.prod.conf)
+# =============================================================================
+#
+# server {
+#     listen 80;
+#     server_name _;
+#
+#     root /usr/share/nginx/html;
+#     index index.html;
+#
+#     # SPA fallback: todas as rotas servem o index.html
+#     location / {
+#         try_files $uri $uri/ /index.html;
+#     }
+#
+#     # Proxy /api/ → FastAPI
+#     location /api/ {
+#         proxy_pass http://backend:8000/;
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#     }
+#
+#     # Cache de assets com hash no nome (Vite os gera assim por padrão)
+#     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+#         expires 1y;
+#         add_header Cache-Control "public, immutable";
+#     }
+# }
+# =============================================================================
