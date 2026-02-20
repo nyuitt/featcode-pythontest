@@ -11,6 +11,7 @@ LOW_STOCK_THRESHOLD = 10
 
 def get_dashboard_data(db: Session) -> DashboardResponse:
     total_products: int = db.query(func.count(Product.id)).scalar() or 0
+    total_categories: int = db.query(func.count(Category.id)).scalar() or 0
 
     total_stock_value: Decimal = db.query(
         func.coalesce(func.sum(Product.price * Product.stock), 0)
@@ -35,6 +36,7 @@ def get_dashboard_data(db: Session) -> DashboardResponse:
 
     return DashboardResponse(
         total_products=total_products,
+        total_categories=total_categories,
         total_stock_value=Decimal(str(total_stock_value)),
         low_stock_count=len(low_stock_products),
         low_stock_products=[ProductLowStock.model_validate(p) for p in low_stock_products],

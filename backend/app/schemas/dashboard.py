@@ -19,6 +19,7 @@ class ProductLowStock(BaseModel):
 
 class DashboardResponse(BaseModel):
     total_products: int
+    total_categories: int
     total_stock_value: Decimal
     low_stock_count: int
     low_stock_products: list[ProductLowStock]
