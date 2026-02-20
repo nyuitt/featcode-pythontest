@@ -1,344 +1,239 @@
-# Desafio Técnico Featcode - Sistema de Gestão de Produtos
+# Featcode — Sistema de Gestão de Produtos
 
-## Visão Geral
+> Desafio técnico implementado em Python/FastAPI com React, containerizado via Docker e com pipeline de testes automatizados.
 
-Bem-vindo ao desafio técnico da Feat! Este projeto consiste no desenvolvimento de um sistema completo de gestão de produtos, demonstrando suas habilidades em arquitetura moderna, boas práticas de desenvolvimento e tecnologias de ponta.
+---
 
-## Referência Visual
+## O que foi entregue
 
-O design da aplicação deve seguir o padrão visual moderno demonstrado neste protótipo:
+| Requisito | Status |
+|---|---|
+| CRUD de Produtos (nome, descrição, preço, categoria, estoque) | ✅ |
+| CRUD de Categorias | ✅ |
+| Busca por nome e filtro por categoria | ✅ |
+| Controle de estoque + alerta de estoque baixo | ✅ |
+| Dashboard (totais, valor de estoque, produtos por categoria) | ✅ |
+| Paginação eficiente (skip/limit) | ✅ |
+| Rate limiting (slowapi — 429 após limite atingido) | ✅ |
+| Logging estruturado em JSON (structlog) | ✅ |
+| Testes automatizados — 41 testes, 97% de cobertura | ✅ |
+| Nginx como reverse proxy unificado | ✅ |
+| Frontend React completo com Shadcn/ui e TanStack Query | ✅ |
+| Migrações com Alembic | ✅ |
+| Seed de dados realistas | ✅ |
+| **Autenticação Keycloak (OAuth2/OIDC)** | ⏳ Pendente |
 
-**ShopSense Dashboard - Product Page**: https://dribbble.com/shots/24351485-ShopSense-Sales-Dashboard
+---
 
-## Requisitos do Sistema
-
-### Funcionalidades Principais
-
-#### Gestão de Produtos
-- Criar, listar, editar e excluir produtos
-- Cada produto deve conter: nome, descrição, preço, categoria, quantidade em estoque
-- Validação básica de dados obrigatórios
-- Busca simples por nome do produto
-
-#### Sistema de Categorias
-- Criar e gerenciar categorias de produtos (lista simples)
-- Associar produtos a uma categoria
-- Filtrar produtos por categoria
-
-#### Controle de Estoque
-- Controlar quantidade em estoque de cada produto
-- Atualização manual de estoque
-- Exibir produtos com estoque baixo (menor que 10 unidades)
-
-#### Dashboard Simples
-- Total de produtos cadastrados
-- Valor total do estoque
-- Lista de produtos com estoque baixo
-- Gráfico básico de produtos por categoria
-
-#### Sistema de Autenticação
-- Integração com **Keycloak** para autenticação
-- Login via Keycloak (OAuth2/OpenID Connect)
-- Proteção de rotas no frontend
-- Autorização baseada em roles do Keycloak
-- Logout integrado com Keycloak
-
-### Requisitos Técnicos
-
-#### Performance
-- Resposta da API em menos de 500ms para consultas simples
-- Paginação eficiente para grandes volumes
-- Cache para consultas frequentes
-- Otimização de queries no banco
-
-#### Escalabilidade
-- Arquitetura preparada para crescimento horizontal
-- Separação clara entre camadas
-- Padrões que facilitem manutenção e evolução
-- Código limpo e bem estruturado
-
-#### Segurança
-- Rate limiting para prevenir abuso
-- Validação e sanitização de entradas
-- Headers de segurança adequados
-- Tratamento seguro de dados sensíveis
-
-#### Disponibilidade
-- Health checks implementados
-- Tratamento adequado de erros
-- Mensagens de erro claras e úteis
-- Logs estruturados para monitoramento
-
-#### Usabilidade
-- Interface responsiva (desktop e mobile)
-- Validação em tempo real nos formulários
-- Feedback visual para ações do usuário
-- Experiência intuitiva e consistente
-
-## Stack Tecnológica
-
-### Frontend
-- **React 18** com TypeScript
-- **Vite** ou **Next.js 14** (App Router)
-- **TailwindCSS** + **Shadcn/ui** para estilização
-- **React Query/TanStack Query** para gerenciamento de estado
-- **React Hook Form** + **Zod** para validação
-- **Recharts** ou **Chart.js** para dashboards
-- **React Testing Library** + **Vitest** para testes
-
+## Stack técnica
 
 ### Backend
-- **Python** com **FastAPI**
-- **Clean Architecture** + **DDD** (Domain-Driven Design)
-- **CQRS** + **mediatr** pattern
-- **PostgreSQL** como banco principal
-- **Pydantic v2** para validação e mapeamento de dados
-- **SQLAlchemy** + **Alembic** para ORM e migrations
-- **structlog** ou **loguru** para logging estruturado
-- **pytest** + **pytest-asyncio** + **httpx** para testes
+- **Python 3.11** + **FastAPI** — framework escolhido pela performance (ASGI assíncrono), tipagem nativa via Pydantic e documentação OpenAPI automática
+- **SQLAlchemy 2.0** (ORM) + **Alembic** (migrações) — abordagem code-first para o schema do banco
+- **PostgreSQL 16** — banco principal; **SQLite** em memória apenas nos testes
+- **slowapi** — rate limiting por IP baseado em janela deslizante
+- **structlog** — logs em JSON estruturado, com `request_id` por request e logs de negócio nos CRUD operations
+- **pytest** + **pytest-cov** + **httpx** — suite de testes com banco isolado por fixture
+
+### Frontend
+- **React 18** + **TypeScript** + **Vite**
+- **TanStack Query** — cache e sincronização de estado com o servidor
+- **React Hook Form** + **Zod** — validação de formulários com tipagem end-to-end
+- **Shadcn/ui** — componentes acessíveis sobre Radix UI
+- **Recharts** — gráfico de produtos por categoria no dashboard
 
 ### Infraestrutura
-- **Postgress** como banco principal
-- **Keycloak** para autenticação e autorização
-- **Docker** + **Docker Compose** para containerização
-- **Nginx** como reverse proxy
+- **Docker Compose** com 5 serviços: `postgres`, `keycloak`, `backend`, `frontend`, `nginx`
+- **Nginx** como reverse proxy: `/api/*` → backend (8000), `/*` → frontend (5173)
+- Hot-reload em desenvolvimento para ambos os serviços
 
-## Arquitetura do Sistema
+---
 
-### Backend - Clean Architecture + DDD
+## Decisões de arquitetura
 
-```
-src/
-├── domain/                      # Camada de Domínio
-│   ├── entities/                # Entidades do domínio
-│   ├── value_objects/           # Objetos de valor
-│   ├── events/                  # Eventos de domínio
-│   ├── repositories/            # Interfaces dos repositórios (ABC)
-│   └── services/                # Serviços de domínio
-├── application/                 # Camada de Aplicação
-│   ├── commands/                # Comandos CQRS
-│   ├── queries/                 # Consultas CQRS
-│   ├── handlers/                # Handlers (mediatr)
-│   ├── schemas/                 # Schemas Pydantic (DTOs)
-│   ├── validators/              # Validadores Pydantic
-│   └── interfaces/              # Interfaces da aplicação (ABC)
-├── infrastructure/              # Camada de Infraestrutura
-│   ├── database/                # Configurações SQLAlchemy + Alembic
-│   ├── repositories/            # Implementação dos repositórios
-│   ├── services/                # Serviços externos
-│   └── config/                  # Configurações de injeção de dependência
-└── api/                         # Camada de Apresentação
-    ├── routers/                 # Routers FastAPI
-    ├── middlewares/             # Middlewares customizados
-    ├── dependencies/            # Dependências FastAPI (Depends)
-    └── exceptions/              # Handlers de exceção
-```
-
-### Frontend - Arquitetura Modular
+### Separação de responsabilidades
+O backend segue uma arquitetura em camadas explícita:
 
 ```
-src/
-├── components/                   # Componentes reutilizáveis
-│   ├── ui/                      # Componentes base (shadcn/ui)
-│   ├── forms/                   # Componentes de formulário
-│   ├── charts/                  # Componentes de gráficos
-│   └── layout/                  # Componentes de layout
-├── pages/                       # Páginas da aplicação
-├── hooks/                       # Custom hooks
-├── services/                    # Serviços de API
-├── stores/                      # Stores de estado global
-├── types/                       # Definições de tipos
-├── utils/                       # Funções utilitárias
-└── lib/                         # Configurações de bibliotecas
+routes/      ← recebe HTTP, delega, retorna resposta
+crud/        ← operações de banco (sem lógica de negócio)
+schemas/     ← contratos de entrada e saída (Pydantic)
+models/      ← mapeamento ORM → tabelas
+core/        ← configurações transversais (DB, limiter, logging)
+middleware/  ← logging de requests
 ```
 
-## Diferenciais
+Cada camada conhece apenas a camada imediatamente abaixo. Rotas não fazem queries SQL; CRUDs não conhecem HTTP.
 
-#### Testes Abrangentes
-- Cobertura mínima de 85% no backend
-- Testes E2E com **Playwright** (pytest-playwright)
-- Testes de integração para todos os endpoints com **httpx** + **pytest-asyncio**
-- Testes unitários para regras de negócio com **pytest**
-- Testes de mutação com **mutmut** para validar qualidade
+### Por que FastAPI e não Django REST?
+FastAPI oferece tipagem nativa, validação automática via Pydantic, documentação OpenAPI gerada sem esforço e suporte a async por padrão. Para uma API REST com foco em performance e developer experience, é a escolha mais adequada no ecossistema Python atual.
 
-#### Observabilidade Completa
-- Logs estruturados com correlationId via **structlog** ou **loguru**
-- Métricas customizadas com **prometheus-fastapi-instrumentator**
-- Health checks detalhados via endpoint `/health` (FastAPI)
-- Tratamento adequado de erros com contexto
-- Monitoring de performance com **OpenTelemetry**
+### Por que Pydantic schemas separados do model ORM?
+Os modelos SQLAlchemy representam tabelas. Os schemas Pydantic representam o contrato da API. Separar os dois permite:
+- Ocultar campos sensíveis (ex: `keycloak_id`) da resposta
+- Ter shapes diferentes para criação (`UserCreate`) e resposta (`UserResponse`)
+- Validar entrada antes de qualquer operação no banco
 
-#### Performance e Otimização
-- Server-side rendering (Next.js)
-- Code splitting e lazy loading
-- Estratégias de caching (Redis + HTTP cache)
-- Indexação otimizada do banco de dados
-- Otimização de imagens e assets
-- Compressão de responses
+### Logging estruturado
+Todo request gera um log JSON com `request_id`, método, path, status e duração. Isso permite correlacionar logs de uma mesma requisição em ferramentas como Grafana Loki, Datadog ou ELK. Operações de negócio (criação, atualização, deleção) geram eventos adicionais para auditoria.
 
-#### Segurança Avançada
-- Integração completa com Keycloak
-- Proteção de rotas baseada em roles
-- Token JWT validado adequadamente
-- CORS configurado adequadamente
-- Headers de segurança implementados
-- Validação em múltiplas camadas
+### Estratégia de testes
+Os testes usam **SQLite em memória** com um `conftest.py` central que:
+1. Cria o schema completo antes de cada teste
+2. Destrói tudo após o teste (isolamento total)
+3. Sobrescreve a dependency `get_db` do FastAPI via `dependency_overrides`
 
-#### Qualidade de Código
-- Princípios SOLID aplicados consistentemente
-- Clean Code em todas as camadas
-- Padrões de design bem implementados
-- Documentação inline adequada
-- Tratamento de exceções robusto
+Essa abordagem não depende de nenhum serviço externo rodando — os 41 testes executam em ~1 segundo.
 
-#### Documentação Excepcional
-- OpenAPI/Swagger com exemplos detalhados
-- Documentação de arquitetura (C4 Model)
-- ADRs (Architecture Decision Records)
-- Guias de instalação e execução completos
-- Collection do Postman atualizada
+---
 
-### Pontos Extras (Opcionais)
-
-- **Roles avançadas no Keycloak** (Admin, Manager, User)
-- **GraphQL** como alternativa à REST API via **Strawberry** (FastAPI)
-- **Real-time updates** via **WebSockets** nativos do FastAPI
-- **Exportação de relatórios** em PDF via **WeasyPrint** ou **ReportLab**
-- **Internacionalização** (i18n) básica com **Babel**
-- **PWA** com capacidades offline
-- **Docker multi-stage builds** otimizados
-
-## Como Executar
+## Como rodar
 
 ### Pré-requisitos
-- Docker Desktop 4.0+
-- Node.js 18+
-- Python 3.11+
-- Git
+- Docker
+- Docker Compose
 
-### Instalação e Execução
-
+### 1. Subir os serviços
 ```bash
-# Clone o repositório
-git clone [https://github.com/featcodetecnologia/desafio-01/]
-
-
-# Copie as variáveis de ambiente
-cp .env.example .env
-
-# Execute toda a aplicação com Docker Compose
-docker-compose up -d
-
-# Aguarde alguns segundos para os serviços iniciarem
-# Verifique se todos os containers estão rodando
-docker-compose ps
+docker compose up -d
 ```
 
-### URLs de Acesso
-- **Frontend**: http://localhost:3000
-- **API**: http://localhost:5000
-- **Swagger**: http://localhost:5000/swagger
-- **Postgres**: http://localhost:5432
-- **Keycloak**: http://localhost:8080
+Aguardar ~15 segundos para o PostgreSQL inicializar.
 
-### Desenvolvimento Local
-
+### 2. Executar as migrações
 ```bash
-# Para desenvolvimento do frontend
-cd frontend
-npm install
-npm run dev
-
-# Para desenvolvimento do backend
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn api.main:app --reload
-
-# Para executar testes
-pytest --cov=src --cov-report=term-missing
-cd ../frontend
-npm test
+docker exec featcode_backend alembic upgrade head
 ```
 
-## Padrões de Commit
-
-Este projeto utiliza [Conventional Commits](https://conventionalcommits.org/):
-
+### 3. Popular o banco com dados iniciais (opcional)
 ```bash
-# Exemplos de commits
-feat(products): add bulk import functionality
-fix(api): resolve pagination issue in products endpoint
-docs(readme): update installation instructions
-test(products): add unit tests for product service
-refactor(auth): improve JWT token validation
-perf(database): optimize product search queries
-style(frontend): apply consistent spacing in components
-chore(deps): update dependencies to latest versions
+docker exec featcode_backend python seed.py
 ```
 
-### Tipos de Commit
-- `feat`: Nova funcionalidade
-- `fix`: Correção de bug
-- `docs`: Documentação
-- `style`: Formatação, ponto e vírgula, etc
-- `refactor`: Refatoração de código
-- `test`: Adição ou correção de testes
-- `chore`: Tarefas de manutenção
-- `perf`: Melhorias de performance
-- `build`: Build e dependências
+Seed inclui 5 categorias e 20 produtos realistas, alguns com estoque propositalmente baixo para demonstrar os alertas do dashboard.
 
-## Critérios de Avaliação
-
-### Técnico (60%)
-- **Arquitetura**: Clean Architecture, DDD, CQRS implementados corretamente
-- **Qualidade de Código**: SOLID, Clean Code, padrões consistentes
-- **Testes**: Cobertura, qualidade dos testes, cenários bem cobertos
-- **Performance**: Otimizações, caching, queries eficientes
-- **Segurança**: Implementação adequada de autenticação/autorização
-
-### Funcional (25%)
-- **Completude**: Todas as funcionalidades implementadas
-- **UX/UI**: Interface intuitiva e responsiva
-- **Validações**: Tratamento adequado de erros
-- **Regras de Negócio**: Implementação correta dos requisitos
-
-### Profissional (15%)
-- **Documentação**: README completo, código bem documentado
-- **Git Flow**: Commits organizados, branches bem estruturadas
-- **Docker**: Compose funcionando perfeitamente
-- **Extras**: Funcionalidades que demonstram expertise avançada
-
-## Entregáveis
-
-### Código Fonte
-- Repositório GitHub público
-- README detalhado (este arquivo)
-- Docker Compose funcional
-- Testes automatizados com boa cobertura
-
-### Aplicação Funcionando
-- Todos os serviços rodando via Docker Compose
-- Banco de dados populado com dados de exemplo
-- Interface funcional e responsiva
-
-### Documentação
-- API documentada com Swagger
-- Guia de instalação e execução
-- Documentação das decisões arquiteturais
-
-### Apresentação
-- Vídeo de 5-10 minutos demonstrando a aplicação
-- Explicação das decisões técnicas tomadas
-- Showcase das funcionalidades implementadas
-- Demonstração dos diferenciais implementados
-
+### 4. Acessar a aplicação
+| Serviço | URL |
+|---|---|
+| **Frontend** | http://localhost |
+| **API** | http://localhost/api |
+| **Swagger UI** | http://localhost:8000/docs |
+| **Keycloak Admin** | http://localhost:8081 (admin/admin) |
 
 ---
 
-**Boa sorte e mostre do que você é capaz!**
+## Como executar os testes
+
+```bash
+# Rodar a suite completa com relatório de cobertura
+docker exec featcode_backend bash -c "cd /app && python -m pytest tests/ -v --cov=app --cov-report=term-missing"
+```
+
+Resultado esperado:
+```
+41 passed in ~1.1s
+TOTAL    463    14    97%
+```
+
+### Estrutura dos testes
+```
+backend/tests/
+├── conftest.py          # fixtures: TestClient + banco SQLite isolado
+├── test_health.py       # smoke test do endpoint raiz
+├── test_categories.py   # 10 testes: CRUD completo + conflitos + 404s
+├── test_products.py     # 17 testes: CRUD + busca + filtros + paginação + estoque baixo
+├── test_dashboard.py    # 3 testes: estado vazio + dados reais + cálculo de métricas
+└── test_users.py        # 10 testes: CRUD completo + email duplicado + 404s
+```
 
 ---
 
-*Este desafio foi criado para identificar desenvolvedores excepcionais que compartilham nossa paixão por tecnologia e excelência técnica. Estamos ansiosos para ver sua solução!*
+## Endpoints da API
+
+### Produtos
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/products/` | Lista produtos (suporta `search`, `category_id`, `skip`, `limit`) |
+| `POST` | `/products/` | Cria produto |
+| `GET` | `/products/{id}` | Busca por ID |
+| `PATCH` | `/products/{id}` | Atualização parcial |
+| `PATCH` | `/products/{id}/stock` | Atualiza estoque |
+| `DELETE` | `/products/{id}` | Remove produto |
+| `GET` | `/products/low-stock` | Lista produtos com estoque < 10 |
+
+### Categorias
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/categories/` | Lista categorias |
+| `POST` | `/categories/` | Cria categoria |
+| `GET` | `/categories/{id}` | Busca por ID |
+| `PATCH` | `/categories/{id}` | Atualização parcial |
+| `DELETE` | `/categories/{id}` | Remove categoria |
+
+### Dashboard
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/dashboard/` | Retorna métricas agregadas |
+
+### Usuários
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/users/` | Lista usuários |
+| `POST` | `/users/` | Cria usuário |
+| `GET` | `/users/{id}` | Busca por ID |
+| `PATCH` | `/users/{id}` | Atualização parcial |
+| `DELETE` | `/users/{id}` | Remove usuário |
+
+---
+
+## Rate Limiting
+
+Todas as rotas possuem limites por IP via `slowapi`. Quando o limite é excedido, a API retorna `HTTP 429 Too Many Requests`.
+
+| Tipo de operação | Limite |
+|---|---|
+| Leituras (GET) | 100 req/min |
+| Escritas (POST/PATCH/DELETE) | 30 req/min |
+| Dashboard | 60 req/min |
+| Criação/deleção de usuário | 20 req/min |
+
+---
+
+## O que está pendente
+
+### Autenticação com Keycloak
+O container do Keycloak já sobe junto com o `docker compose up`, mas a integração com a API ainda não foi implementada. O que faltaria:
+- Middleware de validação de token JWT no backend
+- Dependency `require_auth` para proteger rotas
+- Fluxo de login no frontend (redirect OAuth2, armazenamento de token, envio no header)
+
+### Tratamento global de erros
+Exceções não tratadas atualmente retornam o erro padrão do FastAPI (500). Seria necessário um exception handler centralizado com respostas padronizadas.
+
+---
+
+## Estrutura do projeto
+
+```
+.
+├── backend/
+│   ├── app/
+│   │   ├── core/          # database, limiter, logging
+│   │   ├── crud/          # operações de banco
+│   │   ├── middleware/    # logging_middleware
+│   │   ├── models/        # SQLAlchemy ORM
+│   │   ├── routes/        # FastAPI routers
+│   │   └── schemas/       # Pydantic schemas
+│   ├── alembic/           # migrações
+│   ├── tests/             # suite de testes
+│   ├── seed.py
+│   └── requirements.txt
+├── frontend/
+│   └── src/
+│       ├── components/    # UI components (Shadcn)
+│       ├── pages/         # Dashboard, Products, Categories
+│       └── services/      # axios client
+├── nginx/
+│   └── nginx.conf
+└── docker-compose.yml
+```
