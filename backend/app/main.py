@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import users
 from app.routes import categories
 from app.routes import products
+from app.routes import dashboard
 
 app = FastAPI(
     title="Featcode API",
@@ -45,6 +46,7 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(categories.router)
 app.include_router(products.router)
+app.include_router(dashboard.router)
 
 
 
