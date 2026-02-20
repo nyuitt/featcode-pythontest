@@ -13,6 +13,7 @@ load_dotenv()
 from app.core.database import Base
 import app.models.user
 import app.models.category
+import app.models.product
 
 config = context.config
 
