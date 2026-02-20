@@ -1,7 +1,52 @@
+"""
+MAIN.PY — Ponto de entrada da aplicação FastAPI
+
+Responsabilidades DESTE arquivo:
+  1. Criar a instância do app
+  2. Configurar metadados (título, versão, docs)
+  3. Registrar os routers de cada domínio
+  4. Adicionar middlewares globais (CORS, etc.)
+
+O que NÃO fica aqui: lógica de negócio, queries, validações.
+Se main.py crescer demais, algo está errado na arquitetura.
+"""
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from app.routes import users
+from app.routes import categories
 
-@app.get("/")
+app = FastAPI(
+    title="Featcode API",
+    description="API de gestão de produtos — Desafio Técnico Featcode",
+    version="0.1.0",
+)
+
+# ---------------------------------------------------------------------------
+# CORS — permite que o frontend (localhost:5173) acesse a API (localhost:8000)
+# Em produção: substitua origins por domínios reais e remova "*"
+# ---------------------------------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---------------------------------------------------------------------------
+# REGISTRO DE ROUTERS
+# Cada domínio da aplicação tem seu próprio router.
+# Aqui apenas os conectamos ao app principal.
+# Para adicionar um novo domínio: crie o router e inclua aqui.
+# ---------------------------------------------------------------------------
+app.include_router(users.router)
+app.include_router(categories.router)
+
+
+
+@app.get("/", tags=["Health"])
 def health_check():
-    return {"status": "ok"}
+    """Endpoint de saúde — usado pelo Docker e load balancers."""
+    return {"status": "ok", "version": "0.1.0"}
