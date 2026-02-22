@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_auth
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.crud import product as crud_product
@@ -17,7 +18,12 @@ def list_low_stock(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
-def create_product(request: Request, product_in: ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    request: Request,
+    product_in: ProductCreate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_auth),
+):
     return crud_product.create_product(db, product_in=product_in)
 
 
@@ -45,7 +51,13 @@ def get_product(request: Request, product_id: str, db: Session = Depends(get_db)
 
 @router.patch("/{product_id}", response_model=ProductResponse)
 @limiter.limit("30/minute")
-def update_product(request: Request, product_id: str, product_in: ProductUpdate, db: Session = Depends(get_db)):
+def update_product(
+    request: Request,
+    product_id: str,
+    product_in: ProductUpdate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_auth),
+):
     db_product = crud_product.get_product(db, product_id=product_id)
     if not db_product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Produto '{product_id}' não encontrado.")
@@ -54,7 +66,13 @@ def update_product(request: Request, product_id: str, product_in: ProductUpdate,
 
 @router.patch("/{product_id}/stock", response_model=ProductResponse)
 @limiter.limit("30/minute")
-def update_stock(request: Request, product_id: str, stock_in: ProductStockUpdate, db: Session = Depends(get_db)):
+def update_stock(
+    request: Request,
+    product_id: str,
+    stock_in: ProductStockUpdate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_auth),
+):
     db_product = crud_product.get_product(db, product_id=product_id)
     if not db_product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Produto '{product_id}' não encontrado.")
@@ -63,7 +81,12 @@ def update_stock(request: Request, product_id: str, stock_in: ProductStockUpdate
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
-def delete_product(request: Request, product_id: str, db: Session = Depends(get_db)):
+def delete_product(
+    request: Request,
+    product_id: str,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_auth),
+):
     deleted = crud_product.delete_product(db, product_id=product_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Produto '{product_id}' não encontrado.")

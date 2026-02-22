@@ -1,0 +1,66 @@
+{
+    "realm": "featcode",
+    "enabled": true,
+    "displayName": "Featcode",
+    "sslRequired": "none",
+    "registrationAllowed": false,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "resetPasswordAllowed": true,
+    "editUsernameAllowed": false,
+    "bruteForceProtected": false,
+    "clients": [
+        {
+            "clientId": "featcode-frontend",
+            "enabled": true,
+            "publicClient": true,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "protocol": "openid-connect",
+            "redirectUris": [
+                "http://localhost/*",
+                "http://localhost:5173/*"
+            ],
+            "webOrigins": [
+                "http://localhost",
+                "http://localhost:5173"
+            ],
+            "attributes": {
+                "pkce.code.challenge.method": "S256"
+            }
+        }
+    ],
+    "users": [
+        {
+            "username": "admin",
+            "email": "admin@featcode.com",
+            "firstName": "Admin",
+            "lastName": "Featcode",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "admin123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "default-roles-featcode"
+            ]
+        }
+    ],
+    "roles": {
+        "realm": [
+            {
+                "name": "app-user",
+                "description": "Standard application user"
+            },
+            {
+                "name": "app-admin",
+                "description": "Application administrator"
+            }
+        ]
+    }
+}
